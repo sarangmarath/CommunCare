@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CommunCare — Report Review</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<style>
+  :root{
+    --ink:#1F2421;
+    --paper:#F6F4EE;
+    --card:#FFFFFF;
+    --forest-deep:#1B4332;
+    --forest-mid:#2D6A4F;
+    --amber:#BA7517;
+    --clay:#9B3B32;
+    --slate:#5F5E5A;
+    --hairline:#DDD7C8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .serif{font-family:'Source Serif 4',serif;}
+
+  .shell{display:flex; min-height:100vh;}
+  .sidebar{
+    width:220px; flex-shrink:0; background:var(--forest-deep); color:#EFEDE4;
+    padding:26px 20px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column;
+  }
+  .seal{width:42px;height:42px;border-radius:50%;border:2px solid #EFEDE4;display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:700;margin-bottom:12px;}
+  .brand{font-family:'Source Serif 4',serif; font-size:18px; font-weight:600;}
+  .brand-sub{font-size:11px; letter-spacing:.07em; text-transform:uppercase; opacity:.6; margin-top:3px;}
+  .tabs{margin-top:36px; display:flex; flex-direction:column; gap:2px;}
+  .tab{padding:9px 11px; border-radius:4px; font-size:13px; cursor:pointer; opacity:.7; border-left:2px solid transparent;}
+  .tab.active{opacity:1; background:rgba(255,255,255,.08); border-left-color:#EFEDE4;}
+  .tab .count{float:right; opacity:.6;}
+  .sidebar-foot{margin-top:auto; font-size:11px; opacity:.5; line-height:1.5;}
+
+  .main{flex:1; padding:32px 40px; max-width:1180px;}
+  .head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px; border-bottom:1px solid var(--hairline); padding-bottom:16px;}
+  .head h1{font-family:'Source Serif 4',serif; font-size:26px; margin:0; font-weight:600;}
+  .head .sub{font-size:12px; color:var(--slate); margin-top:4px;}
+  .btn{background:var(--forest-mid); color:#fff; border:none; padding:8px 15px; border-radius:4px; font-size:13px; cursor:pointer; font-weight:500;}
+  .btn:hover{background:var(--forest-deep);}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--hairline);}
+  .btn.reject{background:var(--clay);}
+  .btn.reject:hover{background:#7d2f28;}
+
+  .stat-row{display:flex; gap:14px; margin-bottom:24px;}
+  .stat{flex:1; background:var(--card); border:1px solid var(--hairline); border-radius:6px; padding:14px 18px;}
+  .stat .n{font-family:'Source Serif 4',serif; font-size:28px; font-weight:600;}
+  .stat .l{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--slate); margin-top:4px;}
+  .stat.pending .n{color:var(--amber);}
+  .stat.approved .n{color:#2461A3;}
+  .stat.fixed .n{color:var(--forest-mid);}
+  .stat.rejected .n{color:var(--clay);}
+
+  .toolbar{display:flex; gap:10px; margin-bottom:16px;}
+  .toolbar input, .toolbar select{font-family:'Inter'; font-size:13px; padding:8px 11px; border:1px solid var(--hairline); border-radius:4px; background:#fff;}
+  .toolbar input{flex:1;}
+
+  .cards{display:flex; flex-direction:column; gap:12px;}
+  .card{background:var(--card); border:1px solid var(--hairline); border-radius:8px; padding:16px 18px; display:flex; gap:16px;}
+  .card img{width:88px; height:88px; object-fit:cover; border-radius:6px; flex-shrink:0; border:1px solid var(--hairline);}
+  .card .noimg{width:88px; height:88px; border-radius:6px; flex-shrink:0; border:1px dashed var(--hairline); display:flex; align-items:center; justify-content:center; font-size:10px; color:#999;}
+  .card-body{flex:1; min-width:0;}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card-top .cat{font-weight:600; font-size:14px;}
+  .card-top .caseid{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--slate);}
+  .desc{font-size:13px; color:#3a3a35; margin:6px 0; line-height:1.5;}
+  .meta{font-size:11px; color:var(--slate); display:flex; gap:14px; margin-top:6px;}
+  .meta .mono{font-family:'IBM Plex Mono',monospace;}
+  .actions{margin-top:12px; display:flex; gap:8px; align-items:center;}
+  .badge{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; padding:4px 9px; border-radius:3px; border:1.5px solid;}
+  .badge.Pending{color:var(--amber); border-color:var(--amber); background:rgba(186,117,23,.08);}
+  .badge.Approved{color:#2461A3; border-color:#2461A3; background:rgba(36,97,163,.08);}
+  .badge.Fixed{color:var(--forest-mid); border-color:var(--forest-mid); background:rgba(45,106,79,.08);}
+  .badge.Rejected{color:var(--clay); border-color:var(--clay); background:rgba(155,59,50,.08);}
+
+  .empty{padding:60px 0; text-align:center; color:var(--slate);}
+  .empty .serif{font-size:17px; color:var(--ink); display:block; margin-bottom:6px;}
+
+  .setup{min-height:100vh; display:flex; align-items:center; justify-content:center;}
+  .setup-card{width:420px; background:#fff; border:1px solid var(--hairline); border-radius:8px; padding:30px;}
+  .setup-card input{width:100%; padding:9px 10px; border:1px solid var(--hairline); border-radius:4px; margin-bottom:12px; font-family:'IBM Plex Mono',monospace; font-size:12px;}
+  .setup-card label{font-size:12px; font-weight:600; display:block; margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef } = React;
+
+const STAGES = ["Pending", "Approved", "Fixed", "Rejected"];
+
+function timeAgo(iso){
+  if(!iso) return "—";
+  const mins = Math.floor((Date.now() - new Date(iso).getTime())/60000);
+  if(mins < 60) return mins + "m ago";
+  const hrs = Math.floor(mins/60);
+  if(hrs < 24) return hrs + "h ago";
+  return Math.floor(hrs/24) + "d ago";
+}
+
+function DonutChart({ labels, data, colors }){
+  const ref = useRef(null);
+  const chart = useRef(null);
+  useEffect(()=>{
+    if(chart.current) chart.current.destroy();
+    chart.current = new Chart(ref.current.getContext('2d'), {
+      type:'doughnut',
+      data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:0 }] },
+      options:{
+        maintainAspectRatio:false,
+        cutout:'62%',
+        plugins:{ legend:{ position:'right', labels:{ font:{ size:11 }, boxWidth:10, padding:10 } } }
+      }
+    });
+    return ()=> chart.current && chart.current.destroy();
+  }, [JSON.stringify(data)]);
+  return <div style={{height:180}}><canvas ref={ref}></canvas></div>;
+}
+
+function App(){
+  const [urlInput, setUrlInput] = useState("");
+  const [keyInput, setKeyInput] = useState("");
+  const [client, setClient] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("Pending");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+
+  function connect(){
+    if(!urlInput || !keyInput) return;
+    setClient(window.supabase.createClient(urlInput.trim(), keyInput.trim()));
+  }
+
+  async function load(c){
+    setLoading(true);
+    try{
+      const { data, error } = await c.from('report').select().order('created_at', { ascending:false });
+      if(error) throw error;
+      setReports(data || []);
+    }catch(e){
+      alert("Could not load reports: " + e.message);
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  useEffect(()=>{ if(client) load(client); }, [client]);
+
+  async function setStatus(id, status){
+    setReports(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+    const { error } = await client.from('report').update({ status }).eq('id', id);
+    if(error){
+      alert("Update failed: " + error.message);
+      load(client);
+    }
+  }
+
+  const counts = useMemo(()=>{
+    const c = { Pending:0, Approved:0, Fixed:0, Rejected:0 };
+    reports.forEach(r=>{ const s = r.status && c.hasOwnProperty(r.status) ? r.status : "Pending"; c[s]++; });
+    return c;
+  }, [reports]);
+
+  const categories = useMemo(()=> Array.from(new Set(reports.map(r=>r.category).filter(Boolean))), [reports]);
+
+  const filtered = useMemo(()=>{
+    return reports.filter(r=>{
+      const status = STAGES.includes(r.status) ? r.status : "Pending";
+      if(status !== tab) return false;
+      if(categoryFilter !== "All" && r.category !== categoryFilter) return false;
+      if(search){
+        const s = search.toLowerCase();
+        if(!((r.category||"")+" "+(r.description||"")).toLowerCase().includes(s)) return false;
+      }
+      return true;
+    });
+  }, [reports, tab, categoryFilter, search]);
+
+  if(!client){
+    return (
+      <div className="setup">
+        <div className="setup-card">
+          <div className="seal" style={{background:"var(--forest-deep)", color:"#EFEDE4"}}>CC</div>
+          <h2 className="serif" style={{margin:"14px 0 6px 0", fontSize:21}}>Report Review</h2>
+          <p style={{fontSize:13, color:"var(--slate)", margin:"0 0 20px 0", lineHeight:1.5}}>
+            Connect to your Supabase project — same URL and anon key used in your Flutter app's main.dart.
+          </p>
+          <label>Supabase Project URL</label>
+          <input placeholder="https://xxxx.supabase.co" value={urlInput} onChange={e=>setUrlInput(e.target.value)} />
+          <label>Supabase Anon Key</label>
+          <input placeholder="eyJhbGciOi..." value={keyInput} onChange={e=>setKeyInput(e.target.value)} />
+          <button className="btn" style={{width:"100%", padding:11, marginTop:6}} onClick={connect}>Connect</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="shell">
+      <div className="sidebar">
+        <div className="seal">CC</div>
+        <div className="brand">CommunCare</div>
+        <div className="brand-sub">Report Review</div>
+        <div className="tabs">
+          {STAGES.map(s=>(
+            <div key={s} className={"tab" + (tab===s ? " active" : "")} onClick={()=>setTab(s)}>
+              {s} <span className="count">{counts[s]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="sidebar-foot">{reports.length} total reports</div>
+      </div>
+
+      <div className="main">
+        <div className="head">
+          <div>
+            <h1>{tab} Reports</h1>
+            <div className="sub">
+              {tab === "Pending" && "New submissions awaiting your review."}
+              {tab === "Approved" && "Confirmed issues, not yet resolved."}
+              {tab === "Fixed" && "Resolved and closed out."}
+              {tab === "Rejected" && "Not valid or duplicate reports."}
+            </div>
+          </div>
+          <button className="btn ghost" onClick={()=>load(client)} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </button>
+        </div>
+
+        <div className="stat-row">
+          <div className="stat pending"><div className="n">{counts.Pending}</div><div className="l">Pending</div></div>
+          <div className="stat approved"><div className="n">{counts.Approved}</div><div className="l">Approved</div></div>
+          <div className="stat fixed"><div className="n">{counts.Fixed}</div><div className="l">Fixed</div></div>
+          <div className="stat rejected"><div className="n">{counts.Rejected}</div><div className="l">Rejected</div></div>
+        </div>
+
+        <DonutChart
+          labels={STAGES}
+          data={STAGES.map(s=>counts[s])}
+          colors={["#BA7517","#2461A3","#2D6A4F","#9B3B32"]}
+        />
+
+        <div className="toolbar" style={{marginTop:18}}>
+          <input placeholder="Search description or category…" value={search} onChange={e=>setSearch(e.target.value)} />
+          <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}>
+            <option>All</option>
+            {categories.map(c=><option key={c}>{c}</option>)}
+          </select>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="empty">
+            <span className="serif">Nothing here</span>
+            No reports currently in "{tab}".
+          </div>
+        ) : (
+          <div className="cards">
+            {filtered.map(r=>(
+              <div className="card" key={r.id}>
+                {r.photo_url ? <img src={r.photo_url} alt="" /> : <div className="noimg">No photo</div>}
+                <div className="card-body">
+                  <div className="card-top">
+                    <div>
+                      <span className="cat">{r.category || "Uncategorized"}</span>{" "}
+                      <span className={"badge " + (STAGES.includes(r.status) ? r.status : "Pending")}>
+                        {STAGES.includes(r.status) ? r.status : "Pending"}
+                      </span>
+                    </div>
+                    <span className="caseid">{String(r.id).slice(0,8).toUpperCase()}</span>
+                  </div>
+                  <div className="desc">{r.description || "No description provided."}</div>
+                  <div className="meta">
+                    <span>{timeAgo(r.created_at)}</span>
+                    {r.latitude && <span className="mono">{Number(r.latitude).toFixed(4)}, {Number(r.longitude).toFixed(4)}</span>}
+                  </div>
+                  <div className="actions">
+                    {tab === "Pending" && (
+                      <>
+                        <button className="btn" onClick={()=>setStatus(r.id, "Approved")}>Approve</button>
+                        <button className="btn reject" onClick={()=>setStatus(r.id, "Rejected")}>Reject</button>
+                      </>
+                    )}
+                    {tab === "Approved" && (
+                      <>
+                        <button className="btn" onClick={()=>setStatus(r.id, "Fixed")}>Mark Fixed</button>
+                        <button className="btn ghost" onClick={()=>setStatus(r.id, "Pending")}>Move back to Pending</button>
+                      </>
+                    )}
+                    {tab === "Fixed" && (
+                      <button className="btn ghost" onClick={()=>setStatus(r.id, "Approved")}>Reopen</button>
+                    )}
+                    {tab === "Rejected" && (
+                      <button className="btn ghost" onClick={()=>setStatus(r.id, "Pending")}>Restore to Pending</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
