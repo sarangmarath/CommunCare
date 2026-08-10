@@ -2,8 +2,6 @@
 
 **Civic issue reporting made simple.** CommunCare is a two-sided platform that lets citizens report infrastructure problems — potholes, pipe leaks, waste management issues, gutter damage — with a geo-tagged photo, while giving local municipal staff a real system to review, track, and resolve them.
 
-Built for the **Build Beyond Hackathon 2026**.
-
 ---
 
 ## Demo
