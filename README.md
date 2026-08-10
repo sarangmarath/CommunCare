@@ -53,7 +53,7 @@ All backend infrastructure runs on Supabase's free tier — no billing setup req
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 Two core tables in Supabase (PostgreSQL):
 
@@ -95,7 +95,7 @@ Photos are stored in a public Supabase Storage bucket (`report-photos`), with th
 ---
 
 ## Project Structure
-
+```
 CommunCare/
 ├── communcare/ # Flutter mobile app
 │ ├── lib/
@@ -113,7 +113,7 @@ CommunCare/
 │ └── pubspec.yaml
 └── admin-website/ # Municipal review dashboard
 └── communcare-review.html
-
+```
 ---
 
 ## Getting Started
